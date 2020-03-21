@@ -16,19 +16,24 @@
   (str/join File/separator [(System/getProperty "user.home") directory profile]))
 
 (defn find-manifests [start-dir filename]
-  (loop [[f & rest] (.listFiles (io/as-file start-dir)) manifests []]
+  (loop [[f & rest] (.listFiles (io/as-file start-dir)) manifests [] file-count 0]
     (cond
       (and (nil? f) (empty? rest))
-      manifests
+      (do
+        (println (str/join " " ["Traversed" file-count "files and found" (count manifests) "manifests."]))
+        manifests)
 
       (and (.isFile f) (= filename (.getName f)))
-      (recur rest (conj manifests f))
+      (recur rest (conj manifests f) (inc file-count))
+      
+      (.isFile f)
+      (recur rest manifests (inc file-count))
 
       (.isDirectory f)
-      (recur (concat rest (.listFiles f)) manifests)
+      (recur (concat rest (.listFiles f)) manifests file-count)
 
       :else
-      (recur rest manifests))))
+      (recur rest manifests file-count))))
 
 (defn manifest-index []
   (println "Finding and building manifest index...")
