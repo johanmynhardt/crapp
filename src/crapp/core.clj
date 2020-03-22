@@ -3,7 +3,8 @@
    [clojure.string :as str]
    [clojure.data.json :as json]
    [clojure.java.io :as io]
-   [clojure.java.shell :as shell])
+   [clojure.java.shell :as shell]
+   [clojure.tools.cli :as cli])
   (:import
    (java.io File)))
 
@@ -81,12 +82,38 @@
         {:name name
          :available-apps (map :name apps)})))))
 
+(def cli-opts
+  [["-a" "--app-name APP_NAME" "Launches app having APP_NAME, if available."]
+   ["-d" "--debug" "Enable debug"]
+   ["-h" "--help" "Prints help and exit."]
+   ["-i" "--interactive" "Start with interactive mode"]
+   ["-l" "--list-apps" "Lists apps"]])
+
+(defn print-help [opts]
+  (println (str "#=== HELP ===#"))
+  (println (:summary opts)))
+
 (defn -main [& args]
-  (println (str "Chrome Apps Launcher. Apps requested: " args))
-  (cond
-    (seq args)
-    (doseq [app args]
-      (start-app app))
+  (let [{:keys [options] :as parsed-opts} (cli/parse-opts args cli-opts)]
+    (println (str "#=== Chrome Apps Launcher ===#"))
+    (when (:debug options) (println "got: " (dissoc parsed-opts :summary)))
     
-    :else
-    (println "Available Apps:" (with-out-str (clojure.pprint/pprint (map :name (manifest-index)))))))
+    (cond
+      (:errors parsed-opts)
+      (do
+        (print-help parsed-opts)
+        (println "-----------------")
+        (println "(-_-) Error launching: " (:errors parsed-opts))
+        (println "ktnxbye!"))
+      
+      (:help options)
+      (print-help parsed-opts)
+      
+      (:app-name options)
+      (start-app (:app-name options))
+      
+      (:list-apps options)
+      (println "Available Apps:" (with-out-str (clojure.pprint/pprint (map :name (manifest-index)))))
+      
+      :else
+      (println "Hmm. This is unexpected. Try -h"))))
